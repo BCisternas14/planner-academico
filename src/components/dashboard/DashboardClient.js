@@ -1,16 +1,31 @@
 // src/components/dashboard/DashboardClient.js
 "use client";
+import React, { useState, useEffect } from 'react'; // <--- NUEVO: Importar React Hooks
 import { useTasks } from "../../context/TaskContext";
 import { signOut } from "next-auth/react"; 
 import ProductivityStats from "./ProductivityStats";
 import UpcomingTasks from "./UpcomingTasks";
 import Workload from "./Workload";
 import Notifications from "./Notifications";
-import Goals from "./Goals";
+import Goals, { fetchGoals } from "./Goals"; // <--- MODIFICADO: Importar fetchGoals
+import CreateTaskModal from '../forms/CreateTaskModal'; // <--- NUEVO: Importar el modal
+
 //import GradeAverage from "./GradeAverage";
 
 export default function DashboardClient({ session }) {
-  const { tasks, totalTasks, totalCompletedTasks } = useTasks();
+  // ** MODIFICADO: Añadir showModal del contexto **
+  const { tasks, totalTasks, totalCompletedTasks, showModal } = useTasks(); 
+  // ** NUEVO: Estado para almacenar las metas **
+  const [availableGoals, setAvailableGoals] = useState([]); 
+
+  // ** NUEVO: Cargar metas al montar el componente **
+  useEffect(() => {
+    const loadGoals = async () => {
+        const goalsList = await fetchGoals();
+        setAvailableGoals(goalsList);
+    };
+    loadGoals();
+  }, []); // El array vacío asegura que se ejecute solo una vez al inicio
 
   const handleLogout = () => {
     signOut({ callbackUrl: '/login' }); 
@@ -30,19 +45,16 @@ export default function DashboardClient({ session }) {
           alignItems: 'center', 
           marginBottom: '20px' 
       }}>
-        {/* Usamos el nombre de la sesión, no "Benjamin" fijo */}
         <h1 className="dashboard-header">Hola, {session.user.name}.</h1> 
         
-        {/* Botón de Cerrar Sesión (estilo adaptado a tus variables CSS) */}
         <button 
           onClick={handleLogout} 
           style={{ 
             padding: '8px 15px', 
-            // Color de énfasis usando una variable que destaque para logout
             backgroundColor: '#d9534f', 
             color: 'white', 
             border: 'none', 
-            borderRadius: '5px', // Coherente con otros elementos de tu UI
+            borderRadius: '5px', 
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '500',
@@ -59,8 +71,14 @@ export default function DashboardClient({ session }) {
         <UpcomingTasks tasks={tasks} />
         <Workload tasks={tasks} />
         <Notifications notifications={notifications} />
+        <Goals /> 
         
       </div>
+      
+      {/* ** NUEVO: Renderizar el Modal y pasar las metas disponibles ** */}
+      {showModal && (
+        <CreateTaskModal availableGoals={availableGoals} /> 
+      )}
     </div>
   );
 }

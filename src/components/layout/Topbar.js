@@ -6,7 +6,7 @@ export default function Topbar() {
   return (
     <header className="topbar">
       <button className="add-task-button" onClick={openModal}>
-        <span className="material-icons">add</span> Añadir Actividad
+        <span className="material-icons">add</span> Añadir
       </button>
     </header>
   );

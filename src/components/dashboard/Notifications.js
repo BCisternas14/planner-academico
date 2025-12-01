@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 // Datos de ejemplo
 const notifications = [
-  { id: 1, message: 'Tienes una tarea pendiente para mañana.' },
+
 ];
 
 export default function Notifications() {

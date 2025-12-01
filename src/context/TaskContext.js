@@ -2,10 +2,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
 const mockTasks = [
-  { id: 1, title: 'Estudiar Matemáticas', dueDate: '2025-10-19', category: 'estudio', description: 'Repasar derivadas', completed: false },
-  { id: 2, title: 'Entregar Proyecto', dueDate: '2025-10-21', category: 'tarea', description: 'Subir a GitHub', completed: false },
-  { id: 3, title: 'Revisar avance de Taller', dueDate: '2025-10-18', category: 'tarea', description: '', completed: true },
-  { id: 4, title: 'Estudiar PP2 de Calculo', dueDate: '2025-10-25', category: 'estudio', description: '', completed: true },
 ];
 
 const TaskContext = createContext();

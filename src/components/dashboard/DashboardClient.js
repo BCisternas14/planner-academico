@@ -59,7 +59,7 @@ export default function DashboardClient({ session }) {
         <UpcomingTasks tasks={tasks} />
         <Workload tasks={tasks} />
         <Notifications notifications={notifications} />
-        <Goals goal={productivityGoal} currentProgress={totalCompletedTasks} />
+        
       </div>
     </div>
   );

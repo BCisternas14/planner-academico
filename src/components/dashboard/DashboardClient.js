@@ -7,7 +7,7 @@ import ProductivityStats from "./ProductivityStats";
 import UpcomingTasks from "./UpcomingTasks";
 import Notifications from "./Notifications";
 import Goals, { fetchGoals } from "./Goals"; // <--- MODIFICADO: Importar fetchGoals
-//mport CreateTaskModal from '../forms/CreateTaskModal'; // <--- NUEVO: Importar el modal
+import CreateTaskModal from '../forms/CreateTaskModal'; // <--- NUEVO: Importar el modal
 
 //import GradeAverage from "./GradeAverage";
 

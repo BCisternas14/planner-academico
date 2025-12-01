@@ -5,10 +5,9 @@ import { useTasks } from "../../context/TaskContext";
 import { signOut } from "next-auth/react"; 
 import ProductivityStats from "./ProductivityStats";
 import UpcomingTasks from "./UpcomingTasks";
-import Workload from "./Workload";
 import Notifications from "./Notifications";
 import Goals, { fetchGoals } from "./Goals"; // <--- MODIFICADO: Importar fetchGoals
-import CreateTaskModal from '../forms/CreateTaskModal'; // <--- NUEVO: Importar el modal
+//mport CreateTaskModal from '../forms/CreateTaskModal'; // <--- NUEVO: Importar el modal
 
 //import GradeAverage from "./GradeAverage";
 
@@ -69,9 +68,8 @@ export default function DashboardClient({ session }) {
       <div className="dashboard-grid">
         <ProductivityStats completedTasks={totalCompletedTasks} totalTasks={totalTasks} />
         <UpcomingTasks tasks={tasks} />
-        <Workload tasks={tasks} />
         <Notifications notifications={notifications} />
-        <Goals /> 
+       
         
       </div>
       

@@ -1,28 +1,55 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { getOrCreateUser } from "@/lib/supabaseClient";
 
 const handler = NextAuth({
-  session: { strategy: "jwt" },
-
   providers: [
-    Credentials({
-      name: "Username Only",
+    CredentialsProvider({
+      name: "Nombre de Usuario",
       credentials: {
         username: { label: "Nombre", type: "text" },
       },
       async authorize(credentials) {
-        const username = credentials.username.trim();
+        // Esta función se ejecuta cuando llamas a signIn('credentials') en el frontend
+        const { username } = credentials;
 
-        if (!username) return null;
+        try {
+          // Buscamos o creamos el usuario en Supabase
+          const user = await getOrCreateUser(username);
 
-        return { id: "1", name: username };
-      }
-    })
+          if (user) {
+            // Retornamos el objeto que NextAuth guardará en el token
+            // Mapeamos 'id' y 'nombre' a lo que espera NextAuth
+            return { id: user.id.toString(), name: user.nombre };
+          }
+          return null;
+        } catch (error) {
+          console.error("Error en autorización:", error);
+          return null;
+        }
+      },
+    }),
   ],
-
+  callbacks: {
+    // 1. Cuando se crea el JWT, nos aseguramos de que el ID del usuario esté ahí
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    // 2. Cuando el frontend pide la sesión, le pasamos el ID del token a la sesión
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id;
+      }
+      return session;
+    },
+  },
   pages: {
-    signIn: "/login"
-  }
+    signIn: '/login', // Redirigir aquí si hay error
+  },
+  secret: process.env.NEXTAUTH_SECRET, // Necesario para encriptar tokens
 });
 
 export { handler as GET, handler as POST };

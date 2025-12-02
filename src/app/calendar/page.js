@@ -1,20 +1,24 @@
+// src/app/calendar/page.js
 "use client";
-import React, { useState } from 'react';
+// MODIFICADO: Añadido useEffect
+import React, { useState, useEffect } from 'react'; 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import esLocale from '@fullcalendar/core/locales/es'; // Para poner el calendario en español
+import esLocale from '@fullcalendar/core/locales/es'; 
 
-// Datos de ejemplo. Eventualmente, esto vendrá de la Base de Datos.
-// Nota cómo diferenciamos Tareas (allDay: true) de Eventos (con start/end).
-const initialEvents = [
+// ** NUEVO: Importar el hook para acceder al estado global de tareas/metas **
+import { useTasks } from '../../context/TaskContext'; 
+
+// Datos de ejemplo ESTÁTICOS 
+const initialStaticEvents = [
   {
     id: '1',
     title: 'Revisar avance de Taller',
     date: '2025-10-17',
     allDay: true,
-    color: '#0D6EFD', // Azul (Ej: Tarea)
+    color: '#0D6EFD', 
     extendedProps: {
       category: 'Tarea'
     }
@@ -24,74 +28,78 @@ const initialEvents = [
     title: 'Estudiar Matemáticas',
     date: '2025-10-18',
     allDay: true,
-    color: '#198754', // Verde (Ej: Estudio)
+    color: '#198754', 
     extendedProps: {
       category: 'Estudio'
     }
   },
-  {
-    id: '3',
-    title: 'Entregar Proyecto',
-    date: '2025-10-20',
-    allDay: true,
-    color: '#0D6EFD',
-    extendedProps: {
-      category: 'Tarea'
-    }
-  },
-  {
-    id: '4',
-    title: 'Clase de Cálculo',
-    start: '2025-10-21T10:00:00',
-    end: '2025-10-21T11:30:00',
-    color: '#DC3545', // Rojo (Ej: Clases/Pruebas)
-    extendedProps: {
-      category: 'Clases'
-    }
-  }
+  // ... (otros eventos estáticos, si existen)
 ];
 
-function CalendarView() {
-  // En un futuro, usarías setEvents para añadir nuevos eventos desde la API
-  const [events, setEvents] = useState(initialEvents);
+const mapTasksToEvents = (tasks) => {
+    const getEventColor = (category) => {
+        switch (category) {
+            case 'tarea':
+                return '#0D6EFD'; // Azul (Tareas)
+            case 'meta':
+                return '#198754'; // Verde (Metas)
+            default:
+                return '#6C757D'; // Gris (Por defecto)
+        }
+    };
 
-  /**
-   * INTERACCIÓN 1: Clic en un evento existente (Abre Modal de Edición)
-   * Aquí es donde se debe llamar al Modal para "Editar" o "Eliminar"
-   */
+    return tasks.map(item => ({
+        id: item.id || String(Date.now() + Math.random()), 
+        title: item.title,
+        date: item.dueDate, 
+        allDay: true, 
+        color: getEventColor(item.category),
+        extendedProps: {
+            category: item.category,
+            description: item.description,
+            goalId: item.goalId || null,
+        }
+    }));
+};
+
+
+function CalendarView() {
+  const { tasks } = useTasks();
+
+  const contextEvents = mapTasksToEvents(tasks);
+  
+  // Combinamos los eventos estáticos con los eventos generados del contexto
+  const allEvents = [...initialStaticEvents.filter(e => e.extendedProps.category !== 'Tarea'), ...contextEvents];
+  
+  const [events, setEvents] = useState(allEvents);
+
+  // ** CORRECCIÓN DEL ERROR: useEffect debe estar importado **
+  // Sincronizar eventos cuando las tareas del contexto cambian
+  useEffect(() => {
+    setEvents(allEvents);
+  }, [tasks]); 
+
+
   const handleEventClick = (clickInfo) => {
-    // A modo de ejemplo, usamos un 'alert'.
-    // Aquí se debería abrir el Modal de edición pasando clickInfo.event
     alert(`Evento seleccionado: ${clickInfo.event.title}\n
 Categoría: ${clickInfo.event.extendedProps.category}\n
 ID: ${clickInfo.event.id}`);
-    
-    // (Lógica para abrir el Modal de Edición)
   };
 
-  /**
-   * INTERACCIÓN 2: Clic y arrastre en un espacio vacío (Abre Modal de Creación)
-   * Esto implementa el "evento rápido"
-   */
   const handleDateSelect = (selectInfo) => {
-    // A modo de ejemplo, usamos un 'prompt'.
-    // Aquí se debería abrir el Modal de creación
     let title = prompt('Por favor, ingresa el título para el nuevo evento:');
     
     if (title) {
       const newEvent = {
-        id: String(Date.now()), // ID temporal
+        id: String(Date.now()), 
         title,
         start: selectInfo.startStr,
         end: selectInfo.endStr,
         allDay: selectInfo.allDay,
-        color: '#6C757D' // Color por defecto para nuevos eventos
+        color: '#6C757D' 
       };
 
-      // Añadimos el nuevo evento al estado del calendario
       setEvents([...events, newEvent]);
-      
-      // (Aquí iría la llamada a la API para guardar el newEvent en la DB)
     }
   };
 
@@ -103,20 +111,18 @@ ID: ${clickInfo.event.id}`);
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay' // Vistas disponibles
+          right: 'dayGridMonth,timeGridWeek,timeGridDay' 
         }}
         
-        initialView="timeGridWeek"
-        locale={esLocale} // Español
+        initialView="dayGridMonth" 
+        locale={esLocale} 
         
-        // --- Interacciones ---
-        selectable={true}      // Permite seleccionar fechas/horas
-        editable={true}        // Permite arrastrar y redimensionar eventos (opcional)
-        select={handleDateSelect}       // Acción al seleccionar
-        eventClick={handleEventClick}   // Acción al hacer clic en un evento
+        selectable={true}      
+        editable={true}        
+        select={handleDateSelect}       
+        eventClick={handleEventClick}   
         
-        // --- Fuente de Datos ---
-        events={events} // Los eventos que vienen del estado
+        events={events} // Usa el estado que ahora incluye los eventos del contexto
       />
     </div>
   );

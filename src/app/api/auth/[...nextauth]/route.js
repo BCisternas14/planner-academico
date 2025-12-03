@@ -1,44 +1,43 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import Auth0Provider from "next-auth/providers/auth0";
 import { getOrCreateUser } from "@/lib/supabaseClient";
 
 const handler = NextAuth({
   providers: [
-    CredentialsProvider({
-      name: "Nombre de Usuario",
-      credentials: {
-        username: { label: "Nombre", type: "text" },
-      },
-      async authorize(credentials) {
-        // Esta función se ejecuta cuando llamas a signIn('credentials') en el frontend
-        const { username } = credentials;
-
-        try {
-          // Buscamos o creamos el usuario en Supabase
-          const user = await getOrCreateUser(username);
-
-          if (user) {
-            // Retornamos el objeto que NextAuth guardará en el token
-            // Mapeamos 'id' y 'nombre' a lo que espera NextAuth
-            return { id: user.id.toString(), name: user.nombre };
-          }
-          return null;
-        } catch (error) {
-          console.error("Error en autorización:", error);
-          return null;
-        }
-      },
+    Auth0Provider({
+      clientId: process.env.AUTH0_CLIENT_ID,
+      clientSecret: process.env.AUTH0_CLIENT_SECRET,
+      issuer: process.env.AUTH0_ISSUER,
+      authorization: { params: { scope: "openid email profile" } },
     }),
   ],
   callbacks: {
-    // 1. Cuando se crea el JWT, nos aseguramos de que el ID del usuario esté ahí
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      return true;
+    },
+
+    async jwt({ token, user, profile }) {
       if (user) {
-        token.id = user.id;
+        try {
+          // Google suele devolver el nombre completo en 'user.name'.
+          // Usamos eso, o el email si no hay nombre.
+          const nombreParaDB = user.name || user.email;
+
+          console.log("🔐 Usuario detectado (Auth0/Google):", nombreParaDB);
+
+          // Sincronizamos con Supabase (Tu lógica original se mantiene igual)
+          const dbUser = await getOrCreateUser(nombreParaDB);
+
+          if (dbUser) {
+            token.id = dbUser.id;
+          }
+        } catch (error) {
+          console.error("Error sincronizando usuario:", error);
+        }
       }
       return token;
     },
-    // 2. Cuando el frontend pide la sesión, le pasamos el ID del token a la sesión
+
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id;
@@ -47,9 +46,9 @@ const handler = NextAuth({
     },
   },
   pages: {
-    signIn: '/login', // Redirigir aquí si hay error
+    signIn: '/login', 
   },
-  secret: process.env.NEXTAUTH_SECRET, // Necesario para encriptar tokens
+  secret: process.env.NEXTAUTH_SECRET,
 });
 
 export { handler as GET, handler as POST };

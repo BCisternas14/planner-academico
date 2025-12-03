@@ -1,64 +1,40 @@
 'use client';
-import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  const handleAuth0Login = () => {
     setLoading(true);
-
-    if (username.trim() === '') {
-      setError('Por favor, ingresa tu nombre de usuario.');
-      setLoading(false);
-      return;
-    }
-
-    // Esto llama a nuestro archivo route.js en el servidor
-    const result = await signIn('credentials', {
-      username: username,
-      redirect: false, 
-    });
-
-    if (result?.error) {
-      setError('Error al iniciar sesión. Intenta de nuevo.');
-      console.error(result.error);
-      setLoading(false);
-    } else {
-      // Login exitoso
-      router.push('/');
-      router.refresh(); // Asegura que los componentes del servidor actualicen la sesión
-    }
+    // Esto redirige a la página universal de Auth0
+    signIn('auth0', { callbackUrl: '/' });
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.title}>Iniciar Sesión</h2>
-        <p style={styles.subtitle}>Accede a tu Planificador Académico</p>
+        <div style={{ marginBottom: '20px' }}>
+          {/* Puedes poner aquí el logo de tu app */}
+          <span className="material-icons" style={{ fontSize: '48px', color: '#4a90e2' }}>school</span>
+        </div>
+        
+        <h2 style={styles.title}>Bienvenido</h2>
+        <p style={styles.subtitle}>Ingresa a tu Planner Académico</p>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <input
-            type="text"
-            placeholder="Tu nombre de usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={styles.input}
+        <div style={styles.buttonContainer}>
+          <button 
+            onClick={handleAuth0Login} 
+            style={styles.authButton}
             disabled={loading}
-          />
-
-          {error && <p style={styles.error}>{error}</p>}
-
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? 'Entrando...' : 'Entrar'}
+          >
+            {loading ? 'Redirigiendo...' : 'Iniciar Sesión con Auth0 / GitHub'}
           </button>
-        </form>
+        </div>
+
+        <p style={{ marginTop: '20px', fontSize: '12px', color: '#888' }}>
+          Al iniciar sesión, tu cuenta se vinculará automáticamente.
+        </p>
       </div>
     </div>
   );
@@ -76,8 +52,8 @@ const styles = {
   card: {
     backgroundColor: 'white',
     padding: '40px',
-    borderRadius: '10px', 
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
+    borderRadius: '12px', 
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', 
     maxWidth: '400px',
     width: '100%',
     textAlign: 'center',
@@ -85,7 +61,7 @@ const styles = {
   title: {
     fontSize: '24px',
     fontWeight: 'bold',
-    marginBottom: '10px',
+    marginBottom: '8px',
     color: '#333',
   },
   subtitle: {
@@ -93,31 +69,24 @@ const styles = {
     color: '#666',
     marginBottom: '30px',
   },
-  form: {
+  buttonContainer: {
     display: 'flex',
     flexDirection: 'column',
+    gap: '15px'
   },
-  input: {
-    padding: '12px',
-    marginBottom: '15px',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
-    fontSize: '16px',
-    outline: 'none',
-  },
-  button: {
-    padding: '12px',
-    backgroundColor: '#4a90e2', 
+  authButton: {
+    padding: '14px',
+    backgroundColor: '#24292e', // Color estilo GitHub/Oscuro
     color: 'white',
     border: 'none',
-    borderRadius: '5px',
+    borderRadius: '6px',
     cursor: 'pointer',
     fontSize: '16px',
     fontWeight: 'bold',
-  },
-  error: {
-    color: '#dc3545',
-    marginBottom: '10px',
-    fontSize: '14px',
-  },
+    transition: 'transform 0.1s',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '10px'
+  }
 };

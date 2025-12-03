@@ -1,10 +1,13 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
+import { useTasks } from '../../context/TaskContext'; 
 
-export default function UpcomingTasks({ tasks = [] }) {
-  // Filtramos: Tareas pendientes y que venzan hoy o en el futuro
+export default function UpcomingTasks() {
+  const { tasks } = useTasks();
+
   const upcoming = tasks
-    .filter(task => !task.completed && new Date(task.dueDate) >= new Date().setHours(0,0,0,0))
+    .filter(task => !task.completed && task.dueDate && new Date(task.dueDate) >= new Date().setHours(0,0,0,0))
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
     .slice(0, 3);
 
@@ -13,30 +16,34 @@ export default function UpcomingTasks({ tasks = [] }) {
       <h3>Próximas Entregas</h3>
       {upcoming.length > 0 ? (
         <>
-          <ul>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
             {upcoming.map(task => {
               const isMeta = task.category === 'meta';
               
               return (
-                <li key={task.id} className="upcoming-item">
+                <li key={task.id} className="upcoming-item" style={{ borderBottom: '1px solid #eee', padding: '10px 0' }}>
                   <div className="upcoming-content">
-                    <div className="upcoming-header">
-                      <span>{task.title}</span>
-                      {/* Etiqueta visual pequeña si es una META */}
-                      {isMeta && <span className="badge-mini">Meta</span>}
+                    <div className="upcoming-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: '500', color: '#333' }}>{task.title}</span>
+                      
+                      {isMeta ? (
+                        <span style={{ fontSize: '9px', backgroundColor: '#e0f2fe', color: '#0284c7', padding: '2px 5px', borderRadius: '3px', fontWeight: 'bold' }}>META</span>
+                      ) : (
+                        <span style={{ fontSize: '9px', backgroundColor: '#ffedd5', color: '#c2410c', padding: '2px 5px', borderRadius: '3px', fontWeight: 'bold' }}>ACTIVIDAD</span>
+                      )}
                     </div>
 
-                    {/* Si es una actividad vinculada a una meta, mostramos el nombre de la meta */}
                     {!isMeta && task.goalTitle && (
-                      <span className="upcoming-goal-ref">
-                        <span className="material-icons" style={{ fontSize: '10px', verticalAlign: 'middle' }}>flag</span>
+                      <div style={{ fontSize: '11px', color: '#888', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="material-icons" style={{ fontSize: '10px' }}>flag</span>
                         {task.goalTitle}
-                      </span>
+                      </div>
                     )}
                   </div>
 
-                  <span className="event-date">
-                    {new Date(task.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                  <span className="event-date" style={{ fontSize: '12px', color: '#666', backgroundColor: '#f3f4f6', padding: '4px 8px', borderRadius: '6px' }}>
+                    {/* --- CORRECCIÓN DE FECHA --- */}
+                    {new Date(task.dueDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
                   </span>
                 </li>
               );
@@ -55,53 +62,6 @@ export default function UpcomingTasks({ tasks = [] }) {
           </div>
         </div>
       )}
-
-      {/* Estilos específicos para este componente */}
-      <style jsx>{`
-        .upcoming-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding: 8px 0;
-        }
-        .upcoming-content {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          flex: 1;
-          padding-right: 10px;
-        }
-        .upcoming-header {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-weight: 500;
-        }
-        .badge-mini {
-          font-size: 9px;
-          background-color: #e0f2fe;
-          color: #0284c7;
-          padding: 1px 4px;
-          border-radius: 3px;
-          text-transform: uppercase;
-          font-weight: bold;
-        }
-        .upcoming-goal-ref {
-          font-size: 11px;
-          color: #888;
-          display: flex;
-          align-items: center;
-          gap: 2px;
-        }
-        .event-date {
-          white-space: nowrap;
-          background-color: #f3f4f6;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 12px;
-          color: #555;
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,44 +1,37 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react'; 
-import { fetchUserActivities, fetchUserGoals } from '@/actions/goalActions'; 
+import { fetchUserActivities, fetchUserGoals, deleteGoal, deleteActivity } from '@/actions/goalActions'; 
 
 const TaskContext = createContext();
 
 export function TaskProvider({ children }) {
   const { data: session } = useSession(); 
   const [tasks, setTasks] = useState([]); 
-  
   const [showModal, setShowModal] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
 
-  // --- CARGA UNIFICADA: METAS + ACTIVIDADES (Desde Supabase) ---
+  // --- CARGA DE DATOS ---
   useEffect(() => {
     async function loadAllData() {
       if (session?.user?.id) {
-        console.log("📥 Contexto: Cargando metas y actividades...");
         try {
-          // 1. Ejecutamos ambas peticiones en paralelo
           const [dbActivities, dbGoals] = await Promise.all([
             fetchUserActivities(session.user.id),
             fetchUserGoals(session.user.id)
           ]);
-
-          // NUEVO: Creamos un mapa rápido para buscar nombres de metas por su ID
-          // Esto nos permite decir: "Si la actividad tiene meta_id 5, ¿cómo se llama la meta 5?"
           const goalsMap = new Map((dbGoals || []).map(g => [g.id, g.titulo]));
           
-          // 2. Procesamos las ACTIVIDADES (TAREAS)
           const formattedActivities = (dbActivities || []).map(act => ({
             ...act,
             id: `act-${act.id}`, 
             originalId: act.id,  
-            category: 'tarea', // Categoría clave
-            completed: act.completada || false, 
-            dueDate: act.dueDate || new Date().toISOString()
+            category: 'tarea',
+            dueDate: act.dueDate || new Date().toISOString(),
+            goalTitle: goalsMap.get(act.meta_id) || null,
+            meta_id: act.meta_id // Aseguramos que este campo esté para poder filtrar al borrar
           }));
 
-          // 3. Procesamos las METAS
           const formattedGoals = (dbGoals || []).map(goal => ({
             id: `goal-${goal.id}`,
             originalId: goal.id,
@@ -49,111 +42,87 @@ export function TaskProvider({ children }) {
             category: 'meta'             
           }));
 
-          // 4. Combinamos todo
           setTasks([...formattedGoals, ...formattedActivities]); 
-
         } catch (error) {
           console.error("Error cargando datos:", error);
-          setTasks([]); 
         }
       }
     }
     loadAllData();
   }, [session]); 
 
-  // --- CÁLCULO DE MÉTRICAS CON useMemo ---
-  const productivityMetrics = useMemo(() => {
-    // 1. Filtramos TAREAS (para Productividad Semanal y Próximas Entregas)
-    const weeklyTasks = tasks.filter(t => t.category === 'tarea');
-    
-    // 2. Filtramos METAS (para Notificaciones)
-    const allGoals = tasks.filter(t => t.category === 'meta');
-    
-    // CÁLCULOS DE PRODUCTIVIDAD (Basado solo en TAREAS)
-    const totalTasks = weeklyTasks.length;
-    const totalCompletedTasks = weeklyTasks.filter(t => t.completed).length;
-
-    // PRÓXIMAS ENTREGAS (Las 5 TAREAS no completadas más cercanas)
-    const upcomingTasks = weeklyTasks
-        .filter(t => !t.completed) 
-        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-        .slice(0, 5); 
-
-    // NOTIFICACIONES (Las 5 METAS no completadas más cercanas)
-    const upcomingGoals = allGoals
-        .filter(t => !t.completed) 
-        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-        .slice(0, 5);
-        
-    return {
-        totalTasks,
-        totalCompletedTasks,
-        upcomingTasks,
-        upcomingGoals // <-- Nuevo valor
-    };
-  }, [tasks]);
-
-  // --- GESTIÓN DE ESTADO ---
+  // --- GUARDAR ---
   const saveTask = (newItemData) => {
     const prefix = newItemData.category === 'meta' ? 'goal-' : 'act-';
-    
     const itemToSave = {
       ...newItemData,
-      id: newItemData.id || `${prefix}${tempId}`, 
-      completed: newItemData.completed !== undefined ? newItemData.completed : false,
+      id: newItemData.id.toString().startsWith(prefix) ? newItemData.id : `${prefix}${newItemData.id}`,
       dueDate: newItemData.dueDate || new Date().toISOString()
     };
-    
     if (tasks.some(t => t.id === itemToSave.id)) {
       setTasks(prev => prev.map(t => t.id === itemToSave.id ? { ...t, ...itemToSave } : t));
     } else {
       setTasks(prev => [itemToSave, ...prev]);
     }
-    
-    // NOTA: Implementar la llamada a la función de Supabase para guardar permanentemente
-    
     closeModal();
   };
-  
-  const deleteTask = (taskId) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
-    // NOTA: Llamar a Supabase para eliminar en la DB.
+
+  // --- ELIMINAR INTELIGENTE (ESTA ES LA PARTE IMPORTANTE) ---
+  const deleteTask = async (taskId) => {
+    // 1. Identificar tipo y ID real
+    const isGoal = taskId.toString().startsWith('goal-');
+    const realId = taskId.split('-')[1];
+
+    try {
+      let result;
+      if (isGoal) {
+        result = await deleteGoal(realId);
+      } else {
+        result = await deleteActivity(realId);
+      }
+
+      if (result.success) {
+        // 2. ACTUALIZAR ESTADO VISUAL
+        if (isGoal) {
+            // Si borramos una meta, borramos la meta Y sus hijos
+            setTasks(prev => prev.filter(t => {
+                // Borrar si es la meta misma
+                if (t.id === taskId) return false;
+                
+                // Borrar si es una actividad vinculada a esa meta
+                // Comparamos el meta_id de la actividad con el realId de la meta borrada
+                if (t.meta_id && t.meta_id.toString() === realId.toString()) return false;
+
+                return true; // Conservar el resto
+            }));
+        } else {
+            // Si es solo una actividad, borramos solo esa
+            setTasks(prev => prev.filter(task => task.id !== taskId));
+        }
+      } else {
+        alert("Error al borrar: " + result.error);
+      }
+    } catch (error) {
+      console.error("Error eliminando:", error);
+    }
   };
 
+  // --- COMPLETAR TAREA ---
   const toggleTaskCompleted = (taskId) => {
-    if (typeof taskId === 'string' && taskId.startsWith('goal-')) {
-      return; 
-    }
+    if (typeof taskId === 'string' && taskId.startsWith('goal-')) return; 
     setTasks(prev => prev.map(task => 
       task.id === taskId ? { ...task, completed: !task.completed } : task
     ));
-    // NOTA: Llamar a Supabase para actualizar el estado de completado en la DB.
   };
 
   const openModal = () => { setTaskToEdit(null); setShowModal(true); };
-  const openEditModal = (task) => { 
-    setTaskToEdit(task); 
-    setShowModal(true); 
-  };
+  const openEditModal = (task) => { setTaskToEdit(task); setShowModal(true); };
   const closeModal = () => { setShowModal(false); setTaskToEdit(null); };
 
   return (
     <TaskContext.Provider value={{
-      tasks,
-      // ** VALORES CLAVE EXPUESTOS AL DASHBOARD **
-      totalTasks: productivityMetrics.totalTasks, 
-      totalCompletedTasks: productivityMetrics.totalCompletedTasks,
-      upcomingTasks: productivityMetrics.upcomingTasks, // Próximas Entregas (TAREAS)
-      upcomingGoals: productivityMetrics.upcomingGoals, // Notificaciones (METAS)
-      
-      saveTask,
-      deleteTask,
-      toggleTaskCompleted,
-      showModal,
-      openModal,
-      openEditModal,
-      closeModal,
-      taskToEdit
+      tasks, saveTask, deleteTask, toggleTaskCompleted,
+      showModal, openModal, openEditModal, closeModal, taskToEdit
     }}>
       {children}
     </TaskContext.Provider>

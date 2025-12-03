@@ -1,43 +1,55 @@
-// src/components/dashboard/Notifications.js (MODIFICADO)
+'use client';
 import React from 'react';
 import Link from 'next/link';
+import { useTasks } from '../../context/TaskContext'; 
 
-export default function Notifications({ notifications = [] }) {
-  
-  // Mapeamos los objetos de METAS a objetos de notificación.
-  const formattedNotifications = notifications.map(goal => ({
-      id: goal.id,
-      // Generamos un mensaje específico para la meta.
-      message: `¡ALERTA! Tu meta "${goal.title}" vence el ${new Date(goal.dueDate).toLocaleDateString('es-ES', { month: 'short', day: '2-digit' })}.`
-  }));
+export default function Notifications() {
+  const { tasks } = useTasks(); 
 
-  const displayNotifications = formattedNotifications;
-  
+  const urgentMetas = tasks
+    .filter(t => t.category === 'meta' && !t.completed && t.dueDate)
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)) 
+    .slice(0, 3); 
+
   return (
     <div className="dashboard-card yellow-bg">
-      <h3>Notificaciones (Metas)</h3>
+      <h3>Recordatorios de Metas</h3>
       
-      {/* El resto del renderizado es idéntico */}
-      {displayNotifications.length > 0 ? (
+      {urgentMetas.length > 0 ? (
         <>
           <ul className="notification-list">
-            {displayNotifications.map(notification => (
-              <li key={notification.id}>
-                <span className="material-icons">info</span>
-                <span>{notification.message}</span>
+            {urgentMetas.map(meta => (
+              <li key={meta.id} style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span className="material-icons" style={{ fontSize: '18px', color: '#b7791f' }}>warning</span>
+                  <div>
+                    <span style={{ fontWeight: 'bold', display: 'block', fontSize: '14px' }}>
+                      {meta.title}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#744210' }}>
+                      {/* --- CORRECCIÓN DE FECHA --- */}
+                      Vence el {new Date(meta.dueDate).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}
+                    </span>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
           <div className="dashboard-card-footer" style={{ borderTopColor: 'var(--card-border-yellow)' }}>
-             <Link href="/notifications">Ver todas</Link>
+             <Link href="/tasks">Ver todas</Link>
           </div>
         </>
       ) : (
         <div className="empty-state">
           <span className="material-icons empty-state-icon" style={{color: 'var(--card-border-yellow)'}}>notifications_none</span>
-          <p>Sin metas próximas urgentes.</p>
+          <p>¡Sin metas urgentes pendientes!</p>
         </div>
       )}
+      
+      <style jsx>{`
+        .yellow-bg { background-color: #fffbeb; border: 1px solid #fcd34d; }
+        .notification-list { list-style: none; padding: 0; margin: 0; }
+      `}</style>
     </div>
   );
 }

@@ -134,3 +134,36 @@ export async function fetchUserActivities(userId) {
     return [];
   }
 }
+// ... (Mantén todo el código anterior: imports, fetchUserGoals, createGoal, etc.) ...
+
+// --- ELIMINAR ---
+
+export async function deleteGoal(goalId) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('metas')
+      .delete()
+      .eq('id', parseInt(goalId));
+
+    if (error) throw error;
+    return { success: true };
+  } catch (e) {
+    console.error("🚨 ERROR BORRANDO META:", e);
+    return { error: e.message };
+  }
+}
+
+export async function deleteActivity(activityId) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('actividades')
+      .delete()
+      .eq('id', parseInt(activityId));
+
+    if (error) throw error;
+    return { success: true };
+  } catch (e) {
+    console.error("🚨 ERROR BORRANDO ACTIVIDAD:", e);
+    return { error: e.message };
+  }
+}

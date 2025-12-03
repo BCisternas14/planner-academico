@@ -20,14 +20,14 @@ export default function TaskList() {
 
               return (
                 <li key={task.id} className={`task-item ${isMeta ? 'is-meta' : ''}`}>
-                  {/* HE ELIMINADO EL CHECKBOX AQUÍ COMO PEDISTE */}
+                  
                   
                   <div className="task-item-info">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <h4>{task.title}</h4>
                         
-                        {/* Etiqueta azul si es una META principal */}
+                        
                         {isMeta && (
                           <span className="badge meta-badge">
                             Meta
@@ -35,7 +35,7 @@ export default function TaskList() {
                         )}
                       </div>
 
-                      {/* NUEVO: Si es una tarea (no meta) y tiene meta asociada, la mostramos */}
+                      
                       {!isMeta && task.goalTitle && (
                         <span className="goal-reference">
                           <span className="material-icons" style={{ fontSize: '12px', verticalAlign: 'text-top', marginRight: '3px' }}>flag</span>

@@ -1,14 +1,10 @@
-// src/app/calendar/page.js
 "use client";
-// MODIFICADO: Añadido useEffect
 import React, { useState, useEffect } from 'react'; 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es'; 
-
-// ** NUEVO: Importar el hook para acceder al estado global de tareas/metas **
 import { useTasks } from '../../context/TaskContext'; 
 
 // Datos de ejemplo ESTÁTICOS 
@@ -33,7 +29,6 @@ const initialStaticEvents = [
       category: 'Estudio'
     }
   },
-  // ... (otros eventos estáticos, si existen)
 ];
 
 const mapTasksToEvents = (tasks) => {
@@ -48,10 +43,20 @@ const mapTasksToEvents = (tasks) => {
         }
     };
 
+    // --- CORRECCIÓN DE FECHA (Versión Simplificada) ---
+    const fixDate = (dateStr) => {
+        if (!dateStr) return undefined;
+        
+        // Simplemente tomamos los primeros 10 caracteres (YYYY-MM-DD)
+        // Esto evita que JavaScript intente convertir zonas horarias y mueva el día.
+        // Si la DB dice "2025-12-05T...", usaremos "2025-12-05".
+        return dateStr.substring(0, 10);
+    };
+
     return tasks.map(item => ({
         id: item.id || String(Date.now() + Math.random()), 
         title: item.title,
-        date: item.dueDate, 
+        date: fixDate(item.dueDate), 
         allDay: true, 
         color: getEventColor(item.category),
         extendedProps: {
@@ -62,67 +67,53 @@ const mapTasksToEvents = (tasks) => {
     }));
 };
 
-
 function CalendarView() {
   const { tasks } = useTasks();
+  const [events, setEvents] = useState([]);
 
-  const contextEvents = mapTasksToEvents(tasks);
-  
-  // Combinamos los eventos estáticos con los eventos generados del contexto
-  const allEvents = [...initialStaticEvents.filter(e => e.extendedProps.category !== 'Tarea'), ...contextEvents];
-  
-  const [events, setEvents] = useState(allEvents);
-
-  // ** CORRECCIÓN DEL ERROR: useEffect debe estar importado **
-  // Sincronizar eventos cuando las tareas del contexto cambian
   useEffect(() => {
-    setEvents(allEvents);
+    const contextEvents = mapTasksToEvents(tasks);
+    // Mezclamos eventos estáticos + dinámicos
+    const combined = [...initialStaticEvents, ...contextEvents];
+    setEvents(combined);
   }, [tasks]); 
 
-
   const handleEventClick = (clickInfo) => {
-    alert(`Evento seleccionado: ${clickInfo.event.title}\n
-Categoría: ${clickInfo.event.extendedProps.category}\n
-ID: ${clickInfo.event.id}`);
+    alert(`Evento: ${clickInfo.event.title}\nCategoría: ${clickInfo.event.extendedProps.category}`);
   };
 
   const handleDateSelect = (selectInfo) => {
-    let title = prompt('Por favor, ingresa el título para el nuevo evento:');
-    
+    let title = prompt('Nuevo evento rápido:');
     if (title) {
       const newEvent = {
         id: String(Date.now()), 
         title,
-        start: selectInfo.startStr,
-        end: selectInfo.endStr,
-        allDay: selectInfo.allDay,
+        date: selectInfo.startStr, 
+        allDay: true,
         color: '#6C757D' 
       };
-
-      setEvents([...events, newEvent]);
+      setEvents(prev => [...prev, newEvent]);
     }
   };
 
   return (
-    <div className="calendar-container" style={{ padding: '20px' }}>
+    <div className="calendar-container" style={{ padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay' 
+          right: 'dayGridMonth,timeGridWeek' 
         }}
-        
         initialView="dayGridMonth" 
         locale={esLocale} 
-        
         selectable={true}      
         editable={true}        
         select={handleDateSelect}       
         eventClick={handleEventClick}   
-        
-        events={events} // Usa el estado que ahora incluye los eventos del contexto
+        events={events} 
+        height="auto"
+        dayMaxEvents={true} 
       />
     </div>
   );
